@@ -1,4 +1,4 @@
-## Neuromorphic-Compute-Framework
+## Hydranta-Compute-Framework
 
 Welcome to Hydranta! Hydranta is the first neuromorphic compute framework on Solana, designed to revolutionize the ai agent landscape. Hydranta combines the efficiency of neuromorphic compute with LLM's to create the fastest agents available. For more information, visit our whitepaper and twitter below: 
 
