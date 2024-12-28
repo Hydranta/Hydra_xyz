@@ -4,7 +4,7 @@ Welcome to Hydranta! Hydranta is the first neuromorphic compute framework on Sol
 
 Twitter: https://x.com/Hydranta_xyz
 
-Gitbook: https://Hydranta-1.gitbook.io/Hydranta-neuromorphic-compute
+Gitbook: [https://Hydranta-1.gitbook.io/Hydranta-neuromorphic-compute](https://hydrantas-organization.gitbook.io/hydranta-compute/)
 
 ## How it works 
 
