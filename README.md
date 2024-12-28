@@ -23,14 +23,14 @@ its compiler and runtime are open to extension for other architectures.
 
 ## Table of Contents 
 
-1. [Agent Framework](https://github.com/Hydranta-xyz/Neuromorphic-Compute-Framework/tree/main/Agent)
-    - [Agent Pipeline Setup](https://github.com/Hydranta-xyz/Neuromorphic-Compute-Framework/tree/main/Agent/AgentPipeline)
-2. [Neuromorphic Compute Framework](https://github.com/Hydranta-xyz/Neuromorphic-Compute-Framework/tree/main/srcHydranta)
-    - [Learning Framework](https://github.com/Hydranta-xyz/Neuromorphic-Compute-Framework/tree/main/srcHydranta/LearningFramework)
-    - [Neuromorphic Model Setup](https://github.com/Hydranta-xyz/Neuromorphic-Compute-Framework/tree/main/srcHydranta/ModelSetup)
-    - [Neural Network](https://github.com/Hydranta-xyz/Neuromorphic-Compute-Framework/tree/main/QbtSynapseNeuralNetwork)
-4. [Blockchain Dependencies](https://github.com/Hydranta-xyz/Neuromorphic-Compute-Framework/tree/main/Include%20)
-5. [Rig Vector Index for Agents](https://github.com/Hydranta-xyz/Neuromorphic-Compute-Framework/tree/main/rig_prerequisites/lib)
+1. [Agent Framework](https://github.com/Hydranta/Hydra_xyz/tree/main/Agent)
+    - [Agent Pipeline Setup](https://github.com/Hydranta/Hydra_xyz/tree/main/Agent/AgentPipeline)
+2. [Neuromorphic Compute Framework](https://github.com/Hydranta/Hydra_xyz/tree/main/srchydranta)
+    - [Learning Framework](https://github.com/Hydranta/Hydra_xyz/tree/main/srchydranta/LearningFramework)
+    - [Neuromorphic Model Setup](https://github.com/Hydranta/Hydra_xyz/tree/main/srchydranta/ModelSetup)
+    - [Neural Network](https://github.com/Hydranta/Hydra_xyz/tree/main/srchydranta/NeuromorphicFramework)
+4. [Blockchain Dependencies](https://github.com/Hydranta/Hydra_xyz/tree/main/Include)
+5. [Rig Vector Index for Agents](https://github.com/Hydranta/Hydra_xyz/tree/main/rig_prerequisites)
 
 ## How to install Hydranta's neuromorphic framework
 
