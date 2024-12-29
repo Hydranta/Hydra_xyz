@@ -1,0 +1,82 @@
+import tweepy
+import re
+from solana.publickey import PublicKey
+from solana.rpc.api import Client
+from solana.transaction import Transaction
+from solana.keypair import Keypair
+import time
+
+# Solana and Twitter API keys (replace with your keys)
+SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com"  # Solana RPC endpoint
+TWITTER_API_KEY = "your-twitter-api-key"
+TWITTER_API_SECRET = "your-twitter-api-secret"
+TWITTER_ACCESS_TOKEN = "your-twitter-access-token"
+TWITTER_ACCESS_SECRET = "your-twitter-access-secret"
+
+# Accounts to monitor
+MONITORED_ACCOUNTS = ["account_handle_1", "account_handle_2"]
+
+# Target keywords or patterns
+TARGET_KEYWORDS = ["pump.fun", "0x[0-9a-fA-F]{40}"]  # Add contract regex here
+
+# Initialize Solana client
+solana_client = Client(SOLANA_RPC_URL)
+
+# Load wallet (ensure to secure the private key!)
+PRIVATE_KEY = [your_private_key_as_ints]  # Replace with your wallet private key
+wallet = Keypair.from_secret_key(bytes(PRIVATE_KEY))
+
+# Initialize Twitter API
+auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET)
+auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
+twitter_api = tweepy.API(auth)
+
+def monitor_twitter():
+    """Monitor specific Twitter accounts for target keywords."""
+    for account in MONITORED_ACCOUNTS:
+        try:
+            tweets = twitter_api.user_timeline(screen_name=account, count=5, tweet_mode="extended")
+            for tweet in tweets:
+                if contains_target_keyword(tweet.full_text):
+                    handle_target_tweet(tweet.full_text)
+        except Exception as e:
+            print(f"Error fetching tweets for {account}: {e}")
+
+def contains_target_keyword(text):
+    """Check if the tweet contains any target keyword or pattern."""
+    for keyword in TARGET_KEYWORDS:
+        if re.search(keyword, text, re.IGNORECASE):
+            return True
+    return False
+
+def handle_target_tweet(tweet_text):
+    """Handle tweets that match target criteria."""
+    print(f"Target tweet detected: {tweet_text}")
+    contract_address = extract_contract_address(tweet_text)
+    if contract_address:
+        print(f"Found contract address: {contract_address}")
+        buy_token(contract_address)
+
+def extract_contract_address(text):
+    """Extract contract address from tweet."""
+    match = re.search(r"0x[0-9a-fA-F]{40}", text)
+    return match.group(0) if match else None
+
+def buy_token(contract_address):
+    """Interact with Solana DEX to buy tokens."""
+    print(f"Attempting to buy token at contract: {contract_address}")
+    try:
+        # Example: Token Swap Transaction
+        # This is a placeholder. Replace with actual interaction logic for your chosen DEX.
+        tx = Transaction()
+        # Add your instructions for buying tokens here
+        response = solana_client.send_transaction(tx, wallet)
+        print(f"Transaction successful: {response}")
+    except Exception as e:
+        print(f"Error executing transaction: {e}")
+
+if __name__ == "__main__":
+    print("Starting X.com Token Sniper...")
+    while True:
+        monitor_twitter()
+        time.sleep(30)  # Adjust polling frequency
