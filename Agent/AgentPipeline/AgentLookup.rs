@@ -3,14 +3,15 @@ use crate::{
     extractor::{ExtractionError, Extractor},
     vector_store,
 };
-
 use super::Op;
 
+use std::marker::PhantomData;
+
+// Lookup operation: retrieves top-N documents from a vector store.
 pub struct Lookup<I, In, T> {
     index: I,
     n: usize,
-    _in: std::marker::PhantomData<In>,
-    _t: std::marker::PhantomData<T>,
+    _marker: PhantomData<(In, T)>,
 }
 
 impl<I, In, T> Lookup<I, In, T>
@@ -21,8 +22,7 @@ where
         Self {
             index,
             n,
-            _in: std::marker::PhantomData,
-            _t: std::marker::PhantomData,
+            _marker: PhantomData,
         }
     }
 }
@@ -38,18 +38,9 @@ where
 
     async fn call(&self, input: Self::Input) -> Self::Output {
         let query: String = input.into();
-
-        let docs = self
-            .index
-            .top_n::<T>(&query, self.n)
-            .await?
-            .into_iter()
-            .collect();
-
-        Ok(docs)
+        self.index.top_n::<T>(&query, self.n).await
     }
 }
-
 
 pub fn lookup<I, In, T>(index: I, n: usize) -> Lookup<I, In, T>
 where
@@ -60,16 +51,17 @@ where
     Lookup::new(index, n)
 }
 
+// Prompt operation: generates a response based on a prompt.
 pub struct Prompt<P, In> {
     prompt: P,
-    _in: std::marker::PhantomData<In>,
+    _marker: PhantomData<In>,
 }
 
 impl<P, In> Prompt<P, In> {
     pub(crate) fn new(prompt: P) -> Self {
         Self {
             prompt,
-            _in: std::marker::PhantomData,
+            _marker: PhantomData,
         }
     }
 }
@@ -96,13 +88,10 @@ where
     Prompt::new(model)
 }
 
-pub struct Extract<M, Input, Output>
-where
-    M: CompletionModel,
-    Output: schemars::JsonSchema + for<'a> serde::Deserialize<'a> + Send + Sync,
-{
+// Extract operation: extracts structured data from a completion model.
+pub struct Extract<M, Input, Output> {
     extractor: Extractor<M, Output>,
-    _in: std::marker::PhantomData<Input>,
+    _marker: PhantomData<Input>,
 }
 
 impl<M, Input, Output> Extract<M, Input, Output>
@@ -113,7 +102,7 @@ where
     pub(crate) fn new(extractor: Extractor<M, Output>) -> Self {
         Self {
             extractor,
-            _in: std::marker::PhantomData,
+            _marker: PhantomData,
         }
     }
 }
@@ -141,6 +130,7 @@ where
     Extract::new(extractor)
 }
 
+// Unit tests
 #[cfg(test)]
 pub mod tests {
     use super::*;
@@ -158,7 +148,7 @@ pub mod tests {
     pub struct MockIndex;
 
     impl VectorStoreIndex for MockIndex {
-        async fn top_n<T: for<'a> serde::Deserialize<'a> + std::marker::Send>(
+        async fn top_n<T: for<'a> serde::Deserialize<'a> + Send>(
             &self,
             _query: &str,
             _n: usize,
@@ -171,11 +161,7 @@ pub mod tests {
             Ok(vec![(1.0, "doc1".to_string(), doc)])
         }
 
-        async fn top_n_ids(
-            &self,
-            _query: &str,
-            _n: usize,
-        ) -> Result<Vec<(f64, String)>, VectorStoreError> {
+        async fn top_n_ids(&self, _query: &str, _n: usize) -> Result<Vec<(f64, String)>, VectorStoreError> {
             Ok(vec![(1.0, "doc1".to_string())])
         }
     }
@@ -193,13 +179,15 @@ pub mod tests {
         let result = lookup.call("query".to_string()).await.unwrap();
         assert_eq!(
             result,
-            vec![(
-                1.0,
-                "doc1".to_string(),
-                Foo {
-                    foo: "bar".to_string()
-                }
-            )]
+            vec![
+                (
+                    1.0,
+                    "doc1".to_string(),
+                    Foo {
+                        foo: "bar".to_string()
+                    }
+                )
+            ]
         );
     }
 
