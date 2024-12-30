@@ -2,9 +2,10 @@ use serde_json::{Value as JsonValue};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::error::Error;
-use std::fmt;
+use std::fs::{OpenOptions, File};
+use std::io::Write;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 pub enum Level {
     Debug,
     Info,
@@ -43,16 +44,26 @@ impl ConsoleLogger {
     pub fn new(level: Level) -> Self {
         ConsoleLogger {
             level,
-            pattern: "%D %T %L [%C]".to_string(),
+            pattern: "%D %T %L [%C]: %M".to_string(),
             disabled_categories: Vec::new(),
         }
+    }
+
+    fn apply_pattern(&self, category: &str, level: Level, message: &str) -> String {
+        self.pattern
+            .replace("%D", "2024-12-30") // Example date
+            .replace("%T", "12:00:00")  // Example time
+            .replace("%L", &format!("{:?}", level))
+            .replace("%C", category)
+            .replace("%M", message)
     }
 }
 
 impl Logger for ConsoleLogger {
     fn log(&self, category: &str, level: Level, message: &str) {
         if !self.disabled_categories.contains(&category.to_string()) && level >= self.level {
-            println!("Console Log: {} - {}: {}", category, level as u32, message);
+            let formatted_message = self.apply_pattern(category, level, message);
+            println!("{}", formatted_message);
         }
     }
 
@@ -76,21 +87,39 @@ impl FileLogger {
     pub fn new(level: Level, file_name: &str) -> Self {
         FileLogger {
             level,
-            pattern: "%D %T %L [%C]".to_string(),
+            pattern: "%D %T %L [%C]: %M".to_string(),
             disabled_categories: Vec::new(),
             file_name: file_name.to_string(),
         }
     }
 
-    pub fn init(&mut self) {
-        // Initialize the file (open/create) here
+    pub fn init(&self) -> Result<(), Box<dyn Error>> {
+        OpenOptions::new()
+            .create(true)
+            .write(true)
+            .append(true)
+            .open(&self.file_name)
+            .map(|_| ())
+            .map_err(|e| e.into())
+    }
+
+    fn apply_pattern(&self, category: &str, level: Level, message: &str) -> String {
+        self.pattern
+            .replace("%D", "2024-12-30") // Example date
+            .replace("%T", "12:00:00")  // Example time
+            .replace("%L", &format!("{:?}", level))
+            .replace("%C", category)
+            .replace("%M", message)
     }
 }
 
 impl Logger for FileLogger {
     fn log(&self, category: &str, level: Level, message: &str) {
         if !self.disabled_categories.contains(&category.to_string()) && level >= self.level {
-            println!("File Log: {} - {}: {} to file: {}", category, level as u32, message, self.file_name);
+            let formatted_message = self.apply_pattern(category, level, message);
+            if let Ok(mut file) = OpenOptions::new().append(true).open(&self.file_name) {
+                let _ = writeln!(file, "{}", formatted_message);
+            }
         }
     }
 
@@ -112,7 +141,7 @@ impl LoggerManager {
     pub fn new() -> Self {
         LoggerManager {
             loggers: Vec::new(),
-            reconfigure_lock: Mutex::new(()),
+            reconfigure_lock: Mutex::new(),
         }
     }
 
@@ -164,8 +193,7 @@ impl LoggerManager {
                                     .unwrap_or("")
                                     .to_string();
 
-                                let mut file_logger = FileLogger::new(level, &file_name);
-                                file_logger.init();
+                                let file_logger = FileLogger::new(level, &file_name);
                                 Box::new(file_logger)
                             }
                             _ => return Err("Unknown logger type".into()),
@@ -193,8 +221,10 @@ impl LoggerManager {
             } else {
                 return Err("loggers parameter has wrong type".into());
             }
-        } else {
-            return Err("loggers parameter missing".into());
+        }
+
+        if self.loggers.is_empty() {
+            self.loggers.push(Box::new(ConsoleLogger::new(global_level)));
         }
 
         for category in global_disabled_categories {
@@ -226,14 +256,14 @@ fn main() {
             {
                 "type": "console",
                 "level": 0,
-                "pattern": "%D %T %L [%C]",
+                "pattern": "%D %T %L [%C]: %M",
                 "disabledCategories": ["ui"]
             },
             {
                 "type": "file",
                 "level": 1,
                 "filename": "app.log",
-                "pattern": "%D %T %L [%C]",
+                "pattern": "%D %T %L [%C]: %M",
                 "disabledCategories": ["network"]
             }
         ]
