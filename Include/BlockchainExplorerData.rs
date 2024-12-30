@@ -1,23 +1,27 @@
 use serde::{Deserialize, Serialize};
 use std::vec::Vec;
 
+/// Enum representing the reasons for transaction removal.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum TransactionRemoveReason {
-    INCLUDED_IN_BLOCK = 0,
-    TIMEOUT = 1,
+    IncludedInBlock = 0,
+    Timeout = 1,
 }
 
+/// Details of a "To Key" transaction output.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TransactionOutputToKeyDetails {
     pub tx_out_key: CryptoPublicKey,
 }
 
+/// Details of a multisignature transaction output.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TransactionOutputMultisignatureDetails {
     pub keys: Vec<CryptoPublicKey>,
     pub required_signatures: u32,
 }
 
+/// Enum representing different transaction output details.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum TransactionOutputDetails {
@@ -25,17 +29,20 @@ pub enum TransactionOutputDetails {
     Multisignature(TransactionOutputMultisignatureDetails),
 }
 
+/// Reference details for a transaction output.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TransactionOutputReferenceDetails {
     pub transaction_hash: CryptoHash,
     pub number: usize,
 }
 
+/// Details of a "Generate" transaction input.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TransactionInputGenerateDetails {
     pub height: u32,
 }
 
+/// Details of a "To Key" transaction input.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TransactionInputToKeyDetails {
     pub output_indexes: Vec<u32>,
@@ -44,12 +51,14 @@ pub struct TransactionInputToKeyDetails {
     pub outputs: Vec<TransactionOutputReferenceDetails>,
 }
 
+/// Details of a multisignature transaction input.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TransactionInputMultisignatureDetails {
     pub signatures: u32,
     pub output: TransactionOutputReferenceDetails,
 }
 
+/// Enum representing different transaction input details.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum TransactionInputDetails {
@@ -58,60 +67,37 @@ pub enum TransactionInputDetails {
     Multisignature(TransactionInputMultisignatureDetails),
 }
 
+/// Extra details for a transaction.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransactionExtraDetails {
     pub padding: Vec<usize>,
     pub public_key: Vec<CryptoPublicKey>,
     pub nonce: Vec<String>,
     pub raw: Vec<u8>,
-    // additional fields:
     pub from_address: String,
     pub to_address: Vec<String>,
     pub amount: Vec<String>,
     pub version: String,
 }
 
+/// Extended details for a transaction.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct TransactionOutputDetails2 {
-    pub output: TransactionOutput,
-    pub global_index: u64,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct BaseInputDetails {
-    pub input: BaseInput,
-    pub amount: u64,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct KeyInputDetails {
-    pub input: KeyInput,
-    pub mixin: u64,
-    pub outputs: Vec<TransactionOutputReferenceDetails>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct MultisignatureInputDetails {
-    pub input: MultisignatureInput,
-    pub output: TransactionOutputReferenceDetails,
-}
-
-pub type TransactionInputDetails2 = TransactionInputDetails;
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransactionExtraDetails2 {
     pub padding: Vec<usize>,
     pub public_key: CryptoPublicKey,
     pub nonce: BinaryArray,
     pub raw: BinaryArray,
-    // non-privacy fields:
     pub from_address: String,
     pub to_address: Vec<String>,
     pub amount: Vec<String>,
     pub tx_key: CryptoSecretKey,
 }
 
+/// Full details of a transaction.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransactionDetails {
     pub hash: CryptoHash,
     pub size: u64,
@@ -129,16 +115,17 @@ pub struct TransactionDetails {
     pub block_height: u32,
     pub extra: TransactionExtraDetails2,
     pub signatures: Vec<Vec<CryptoSignature>>,
-    pub inputs: Vec<TransactionInputDetails2>,
+    pub inputs: Vec<TransactionInputDetails>,
     pub outputs: Vec<TransactionOutputDetails2>,
-    // non-privacy fields:
     pub from_address: String,
     pub to_address: Vec<String>,
     pub amount: Vec<String>,
     pub tx_key: CryptoSecretKey,
 }
 
+/// Details of a blockchain block.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BlockDetails {
     pub major_version: u8,
     pub minor_version: u8,
@@ -165,7 +152,7 @@ pub struct BlockDetails {
     pub transactions: Vec<TransactionDetails>,
 }
 
-// Placeholder types for external dependencies
+// Aliases for external dependencies
 pub type CryptoHash = Vec<u8>;
 pub type CryptoPublicKey = Vec<u8>;
 pub type CryptoSecretKey = Vec<u8>;
@@ -173,10 +160,15 @@ pub type CryptoSignature = Vec<u8>;
 pub type CryptoKeyImage = Vec<u8>;
 pub type BinaryArray = Vec<u8>;
 
+// Placeholder structs for external dependencies
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TransactionOutput;
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BaseInput;
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct KeyInput;
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct MultisignatureInput;
-
-
-
