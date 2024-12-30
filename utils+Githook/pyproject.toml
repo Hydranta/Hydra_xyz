@@ -4,18 +4,18 @@ requires = ["poetry-core>=1.2.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "qubit-nc"
+name = "hydranta-nc"
 packages = [
-    {include = "qubit", from = "src"},
+    {include = "hydranta", from = "src"},
     {include = "tests"}
 ]
 include = ["tutorials"]
 version = "0.11.0.dev0"
 readme = "README.md"
 description = "A Software Framework for Neuromorphic Computing"
-repository = "https://github.com/qubit-nc/qubit"
+repository = "https://github.com/Hydranta/Hydra_xyz"
 authors = [ 
-    "Qubit's Neuromorphic Computing Lab"
+    "Hydranta's Neuromorphic Computing Lab"
 ]
 license = "(BSD-3-Clause), (LGPL-2.1-or-later)"
 keywords = [
