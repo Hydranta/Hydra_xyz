@@ -2,57 +2,68 @@ use std::vec::Vec;
 use std::string::String;
 use std::collections::HashMap;
 
-// Placeholder types (since the full implementation of these types is not given in your code).
+// Placeholder types (these should be implemented based on actual CryptoTypes)
 #[derive(Clone, Debug)]
 pub struct TransactionOutput; // Define this struct according to your CryptoTypes
+
 #[derive(Clone, Debug)]
 pub struct BaseInput; // Define this struct according to your CryptoTypes
+
 #[derive(Clone, Debug)]
 pub struct KeyInput; // Define this struct according to your CryptoTypes
+
 #[derive(Clone, Debug)]
 pub struct MultisignatureInput; // Define this struct according to your CryptoTypes
+
 #[derive(Clone, Debug)]
 pub struct TransactionOutputReferenceDetails; // Define this struct according to your CryptoTypes
+
 #[derive(Clone, Debug)]
 pub struct CryptoPublicKey; // Define this struct according to your CryptoTypes
+
 #[derive(Clone, Debug)]
 pub struct BinaryArray(pub Vec<u8>);
+
 #[derive(Clone, Debug)]
 pub struct CryptoHash(pub Vec<u8>); // Placeholder for Crypto::Hash type
+
 #[derive(Clone, Debug)]
 pub struct CryptoSignature; // Define this struct according to your CryptoTypes
 
-// Rust version of the provided C++ structures
-
+// Transaction output details, including the associated global index
 pub struct TransactionOutputDetails {
     pub output: TransactionOutput,
     pub global_index: u64,
 }
 
+// Base input details, including the input and amount
 pub struct BaseInputDetails {
     pub input: BaseInput,
     pub amount: u64,
 }
 
+// Key input details, including mixin and associated outputs
 pub struct KeyInputDetails {
     pub input: KeyInput,
     pub mixin: u64,
     pub outputs: Vec<TransactionOutputReferenceDetails>,
 }
 
+// Multisignature input details, including the output reference
 pub struct MultisignatureInputDetails {
     pub input: MultisignatureInput,
     pub output: TransactionOutputReferenceDetails,
 }
 
-// Rust's enum variant for `boost::variant`
+// Enum to handle various types of transaction inputs
 pub enum TransactionInputDetails {
     BaseInputDetails(BaseInputDetails),
     KeyInputDetails(KeyInputDetails),
     MultisignatureInputDetails(MultisignatureInputDetails),
 }
 
-pub struct TransactionExtraDetails2 {
+// Additional details for transaction extra information (public key, nonce, etc.)
+pub struct TransactionExtraDetails {
     pub public_key: CryptoPublicKey,
     pub nonce: BinaryArray,
     pub raw: BinaryArray,
@@ -62,7 +73,8 @@ pub struct TransactionExtraDetails2 {
     pub version: String,
 }
 
-pub struct TransactionDetails2 {
+// Main transaction details struct with all the essential transaction information
+pub struct TransactionDetails {
     pub hash: CryptoHash,
     pub size: u64,
     pub fee: u64,
@@ -76,7 +88,7 @@ pub struct TransactionDetails2 {
     pub in_blockchain: bool,
     pub block_hash: CryptoHash,
     pub block_height: u32,
-    pub extra: TransactionExtraDetails2,
+    pub extra: TransactionExtraDetails,
     pub signatures: Vec<Vec<CryptoSignature>>,
     pub inputs: Vec<TransactionInputDetails>,
     pub outputs: Vec<TransactionOutputDetails>,
@@ -85,7 +97,8 @@ pub struct TransactionDetails2 {
     pub amount: Vec<String>,
 }
 
-pub struct BlockDetails2 {
+// Block details struct with information about block version, size, etc.
+pub struct BlockDetails {
     pub major_version: u8,
     pub minor_version: u8,
     pub timestamp: u64,
@@ -104,5 +117,5 @@ pub struct BlockDetails2 {
     pub size_median: u64,
     pub penalty: f64,
     pub total_fee_amount: u64,
-    pub transactions: Vec<TransactionDetails2>,
+    pub transactions: Vec<TransactionDetails>,
 }
