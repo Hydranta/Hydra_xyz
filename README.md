@@ -6,6 +6,10 @@ Twitter: https://x.com/Hydranta_xyz
 
 Gitbook: https://hydrantas-organization.gitbook.io/hydranta-compute/
 
+<p align="center">
+<img src="https://pbs.twimg.com/media/GgEgW-UXIAAxh6k?format=jpg&name=large" alt="Hydranta" width="500"/>
+</p>
+
 ## How it works 
 
 Our whitepaper explains **why** traditional agents are considered slow when compared to neuromorphic compute. Neuromorphic compute is the hardware setup that lies behind the agents and directly contributes to their ability to process information, respond to changes, recognize patterns, and more. 
