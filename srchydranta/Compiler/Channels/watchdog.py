@@ -1,59 +1,47 @@
-import typing as ty
+from typing import Optional, Dict, Any, List
 from contextlib import ContextDecorator
 from datetime import datetime
 from multiprocessing import Process, Event, Queue, Manager
+from concurrent.futures import ThreadPoolExecutor
 from abc import abstractmethod
 from dataclasses import dataclass
+import queue
 import atexit
-from threading import Thread
-
-from lava.magma.compiler.builders.interfaces import AbstractBuilder
 
 
 @dataclass
 class EventMetadata:
-    """Data class to store an event to be monitored and associated string
-    (channel_name.method_type) to display in case it is timing out."""
+    """Stores an event to monitor and associated metadata."""
     event: Event
     channel_name: str
     method_type: str
 
 
 class EventCompletionMonitor:
-    """A Generic Monitor class which watches a queue. For every entry put
-    into the queue, it spins up an event monitor thread to watch its
-    completion or print msg if timeout happens."""
+    """Monitors events from a queue and logs timeouts."""
     @staticmethod
-    def monitor(queue: Queue, timeout: float):
-        threads: ty.List[Thread] = []
-        while True:
-            v: EventMetadata = queue.get()
-            if v is None:
-                break  # Stopping Criterion
-
-            t = Thread(target=EventCompletionMonitor.event_monitor,
-                       args=(v, timeout,))
-            t.start()
-            threads.append(t)
-
-        for t in threads:
-            t.join()
+    def monitor(queue: Queue, timeout: float, thread_pool_size: int = 5):
+        with ThreadPoolExecutor(max_workers=thread_pool_size) as executor:
+            while True:
+                try:
+                    metadata: Optional[EventMetadata] = queue.get(timeout=1)
+                    if metadata is None:  # Sentinel to exit the loop
+                        break
+                    executor.submit(EventCompletionMonitor.event_monitor, metadata, timeout)
+                except queue.Empty:
+                    continue
 
     @staticmethod
-    def event_monitor(v: EventMetadata, timeout: float):
-        while True:
-            if not v.event.wait(timeout):
-                now = datetime.now()
-                t = datetime.strftime(now, "%H:%M:%S")
-                msg = f"{t} : Blocked on {v.channel_name} :: {v.method_type}"
-                print(msg, flush=True)
-            else:
-                break
+    def event_monitor(metadata: EventMetadata, timeout: float):
+        while not metadata.event.wait(timeout):
+            now = datetime.now().strftime("%H:%M:%S")
+            print(f"{now} : Blocked on {metadata.channel_name} :: {metadata.method_type}", flush=True)
+        # Event completed successfully
 
 
 @dataclass
 class WatchdogToken:
-    """A Token to encapsulate related entries"""
+    """Encapsulates related entries for a Watchdog."""
     event: Event
     queue: Queue
     channel_name: str
@@ -61,45 +49,38 @@ class WatchdogToken:
 
 
 class Watchdog(ContextDecorator):
-    """
-    Monitors a Port to observe if it is blocked.
-
-    Writes the EventMetadata to a queue which is observed by a
-    EventCompletionMonitor process. If the wait completes successfully,
-    no msg is printed. If the wait times out, a msg gets printed with the
-    current time, channel/port and function name.
-    """
-    def __init__(self, w: ty.Optional[WatchdogToken]):
-        self._w = w
+    """Monitors an event, printing timeouts if they occur."""
+    def __init__(self, token: Optional[WatchdogToken]):
+        self.token = token
 
     def __enter__(self):
-        w: WatchdogToken = self._w
-        w.event.clear()
-        v = EventMetadata(w.event, w.channel_name, w.method_type)
-        w.queue.put(v)
+        if self.token:
+            self.token.event.clear()
+            self.token.queue.put(EventMetadata(
+                event=self.token.event,
+                channel_name=self.token.channel_name,
+                method_type=self.token.method_type
+            ))
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._w.event.set()
-        return False
+        if self.token:
+            self.token.event.set()
+        return False  # Do not suppress exceptions
 
 
 class WatchdogManagerInterface:
-    """Generic Interface for Watchdogs"""
+    """Generic interface for managing watchdogs."""
     @abstractmethod
-    def lq(self) -> ty.Optional[Queue]:
+    def lq(self) -> Optional[Queue]:
         pass
 
     @abstractmethod
-    def sq(self) -> ty.Optional[Queue]:
+    def sq(self) -> Optional[Queue]:
         pass
 
     @abstractmethod
-    def create_watchdog(self,
-                        queue: Queue,
-                        channel_name: str,
-                        method_type: str
-                        ) -> Watchdog:
+    def create_watchdog(self, queue: Queue, channel_name: str, method_type: str) -> Watchdog:
         pass
 
     def start(self):
@@ -110,87 +91,66 @@ class WatchdogManagerInterface:
 
 
 class WatchdogManager(WatchdogManagerInterface):
-    """A Wrapper around Multiprocessing Manager which allocates the
-    multiprocessing queues, events and event monitors"""
-    def __init__(self, long_event_timeout: float, short_event_timeout: float):
-        self._mp_manager = None
-        self._lq = None
-        self._sq = None
+    """Manages event queues and monitoring processes."""
+    def __init__(self, long_event_timeout: float, short_event_timeout: float, thread_pool_size: int = 5):
+        self._manager = Manager()
+        self._lq = self._manager.Queue()
+        self._sq = self._manager.Queue()
         self._long_event_timeout = long_event_timeout
         self._short_event_timeout = short_event_timeout
-        self._lm = None
-        self._sm = None
+        self._thread_pool_size = thread_pool_size
+        self._long_monitor = None
+        self._short_monitor = None
         atexit.register(self.stop)
 
     @property
-    def lq(self) -> ty.Optional[Queue]:
+    def lq(self) -> Optional[Queue]:
         return self._lq
 
     @property
-    def sq(self) -> ty.Optional[Queue]:
+    def sq(self) -> Optional[Queue]:
         return self._sq
 
-    def create_watchdog(self,
-                        queue: Queue,
-                        channel_name: str,
-                        method_type: str
-                        ) -> Watchdog:
-        w = WatchdogToken(event=self._mp_manager.Event(),
-                          queue=queue,
-                          channel_name=channel_name,
-                          method_type=method_type)
-        return Watchdog(w)
+    def create_watchdog(self, queue: Queue, channel_name: str, method_type: str) -> Watchdog:
+        return Watchdog(WatchdogToken(
+            event=self._manager.Event(),
+            queue=queue,
+            channel_name=channel_name,
+            method_type=method_type
+        ))
 
     def start(self):
-        self._mp_manager = Manager()
-
-        self._lq = self._mp_manager.Queue()
-        self._sq = self._mp_manager.Queue()
-
-        self._lm = Process(target=EventCompletionMonitor.monitor,
-                           args=(self._lq, self._long_event_timeout))
-        self._lm.start()
-
-        self._sm = Process(target=EventCompletionMonitor.monitor,
-                           args=(self._sq, self._short_event_timeout))
-        self._sm.start()
+        self._long_monitor = Process(target=EventCompletionMonitor.monitor, args=(self._lq, self._long_event_timeout, self._thread_pool_size))
+        self._short_monitor = Process(target=EventCompletionMonitor.monitor, args=(self._sq, self._short_event_timeout, self._thread_pool_size))
+        self._long_monitor.start()
+        self._short_monitor.start()
 
     def stop(self):
-        if self._mp_manager:
-            self._lq.put(None)  # This signals long event_monitor to stop
-            self._sq.put(None)  # This signals short event_monitor to stop
+        if self._lq:
+            self._lq.put(None)  # Signal long event monitor to stop
+        if self._sq:
+            self._sq.put(None)  # Signal short event monitor to stop
 
-            self._lm.join()
-            self._sm.join()
+        if self._long_monitor:
+            self._long_monitor.join()
+        if self._short_monitor:
+            self._short_monitor.join()
 
-            self._mp_manager.shutdown()
-            self._mp_manager = None
-
-
-class NoOPWatchdog(Watchdog):
-    """Dummy Watchdog for NoOP"""
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return False
+        self._manager.shutdown()
 
 
 class NoOPWatchdogManager(WatchdogManagerInterface):
-    """Dummy Watchdog Manager for NoOP"""
+    """No-op implementation for testing or disabled mode."""
     @property
-    def lq(self) -> ty.Optional[Queue]:
+    def lq(self) -> Optional[Queue]:
         return None
 
     @property
-    def sq(self) -> ty.Optional[Queue]:
+    def sq(self) -> Optional[Queue]:
         return None
 
-    def create_watchdog(self,
-                        queue: Queue,
-                        channel_name: str,
-                        method_type: str) -> Watchdog:
-        return NoOPWatchdog(None)
+    def create_watchdog(self, queue: Queue, channel_name: str, method_type: str) -> Watchdog:
+        return Watchdog(None)
 
     def start(self):
         pass
@@ -199,21 +159,14 @@ class NoOPWatchdogManager(WatchdogManagerInterface):
         pass
 
 
-class WatchdogManagerBuilder(AbstractBuilder):
-    """Builds a Watchdog Manager given timeout values and debug level"""
-    def __init__(self,
-                 compile_config: ty.Dict[str, ty.Any],
-                 log_level: int):
-        self._long_event_timeout = compile_config["long_event_timeout"]
-        self._short_event_timeout = compile_config["short_event_timeout"]
-        self._debug = compile_config["use_watchdog"]
-        if self._debug:
-            print("!!!!!!! Using Watchdog to Monitor Ports !!!!!!!")
-            print("!!!!!!! Impacts Latency Sensitive Applications !!!!!!!")
+class WatchdogManagerBuilder:
+    """Builds a WatchdogManager with configuration."""
+    def __init__(self, config: Dict[str, Any]):
+        self._long_event_timeout = config.get("long_event_timeout", 10.0)
+        self._short_event_timeout = config.get("short_event_timeout", 5.0)
+        self._use_watchdog = config.get("use_watchdog", False)
 
-    def build(self):
-        if self._debug:
-            return WatchdogManager(self._long_event_timeout,
-                                   self._short_event_timeout)
-        else:
-            return NoOPWatchdogManager()
+    def build(self) -> WatchdogManagerInterface:
+        if self._use_watchdog:
+            return WatchdogManager(self._long_event_timeout, self._short_event_timeout)
+        return NoOPWatchdogManager()
